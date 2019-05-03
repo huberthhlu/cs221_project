@@ -100,7 +100,7 @@ class json2csv(object):
         newFilename = os.path.join(path, newFilename)
         filename = board + '-' + str(start) + '-' + str(end) + '.json'
         filename = os.path.join(path, filename)
-        print ('filename1 = ', filename)
+        print ('JSON file : ', filename)
         with open(filename,encoding='utf-8', errors='ignore') as json_data:
             x = json.load(json_data, strict = False)
         f = csv.writer(open(newFilename+'.csv', "w"))
@@ -122,52 +122,83 @@ class json2csv(object):
                         x["article_title"],
                         x["author"],
                         x["date"],
-                        # x["content"],
                         x["content"]])
 
     def extractSentece(self):
-    	board = self.board
-    	path = self.path
-    	end = self.end
-    	start = self.start
-    	print ('board = ', board)
-    	print ('path = ', path)
-    	print ('end = ', end)
-    	print ('start = ', start)
+        board = self.board
+        path = self.path
+        end = self.end
+        start = self.start
+        print ('board = ', board)
+        print ('path = ', path)
+        print ('end = ', end)
+        print ('start = ', start)
 
-    	filename = board + '-' + str(start) + '-' + str(end) + '.csv'
-    	filename = os.path.join(path, filename)
-    	print ('filename2 = ', filename)
-    	# initializing the titles and rows list 
-    	fields = [] 
-    	rows = [] 
-    	# reading csv file 
-    	with open(filename, 'r') as csvfile: 
-	    	# creating a csv reader object 
-	    	csvreader = csv.reader(csvfile) 
-	    	# extracting field names through first row 
-	    	fields = next(csvreader) 
-	    	# extracting each data row one by one 
-	    	for row in csvreader: 
-	    		rows.append(row) 
-	    		# get total number of rows 
-    		print("Total no. of rows: %d"%(csvreader.line_num)) 
-    	# printing the field names 
-    	print('Field names are:' + ', '.join(field for field in fields)) 
-    	#  printing first 5 rows 
-    	print('\nFirst 5 rows are:\n') 
-    	for row in rows[:2]: 
-    		# parsing each column of a row 
-    		for col in row: 
-    			print("%10s"%col), 
-    		print('\n') 
+        # filename = board + '-' + str(start) + '-' + str(end) + '.csv'
+        # filename = os.path.join(path, filename)
+        # print ('filename2 = ', filename)
+        # # initializing the titles and rows list 
+        # fields = [] 
+        # rows = [] 
+        # # reading csv file 
+        # with open(filename, 'r') as csvfile: 
+        # 	# creating a csv reader object 
+        # 	csvreader = csv.reader(csvfile) 
+        # 	# extracting field names through first row 
+        # 	fields = next(csvreader) 
+        # 	# extracting each data row one by one 
+        # 	for row in csvreader: 
+        # 		rows.append(row) 
+        # 		# get total number of rows 
+        # 	print("Total no. of rows: %d"%(csvreader.line_num)) 
+        # # printing the field names 
+        # print('Field names are:' + ', '.join(field for field in fields)) 
+        # #  printing first 5 rows 
+        # print('\nFirst 5 rows are:\n') 
+        # for row in rows[:5]: 
+        # 	# parsing each column of a row 
+        # 	for col in row: 
+        # 		print("%10s"%col), 
+        # 	print('\n') 
+
+
+        newfilename = "sentences_Data_Ptt.csv"
+        f = csv.writer(open(newfilename, "w"))
+        f.writerow(["article_id", "article_title", "author", "date", "sentences"])
+
+        filename = board + '-' + str(start) + '-' + str(end) + '.csv'
+        filename = os.path.join(path, filename)
+        with open(filename, 'r') as csvfile: 
+            # creating a csv reader object 
+            csvreader = csv.reader(csvfile) 
+            # extracting field names through first row 
+            fields = next(csvreader) 
+            for row in csvreader:
+                ID = row[0]
+                title = row[1]
+                author = row[2]
+                date = row[3]
+                corpus = row[4]
+                sentences = corpus.split('，')
+                for s in sentences:
+                    f.writerow([ID, title, author, date, s])
+
+        print("===================================")
+        print("DONE!")
+        print("Filename: {} has store in current directory!".format(newfilename))
+
+
 
 
 if __name__ == '__main__':
+
+    print("Convert json to csv...")
+    print("===================================")
     converter = json2csv()
     converter.subFunction()
     converter1 = json2csv()
     converter1.extractSentece()
+    
 
 
 # https://github.com/jwlin/ptt-web-crawler

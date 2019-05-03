@@ -39,7 +39,7 @@ class wikiCrawler(object):
 	# def parse_article(limit, category_name):
 		pageLimit = int(limit)
 
-		category = u'政治'
+		category = u'臺灣政治'
 		# wiki_wiki = wikipediaapi.Wikipedia('en')
 		wiki_wiki = wikipediaapi.Wikipedia('zh-tw')
 

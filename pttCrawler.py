@@ -62,6 +62,8 @@ class PttWebCrawler(object):
             filename = os.path.join(path, filename)
             # self.store(filename, u'{"articles": [', 'w')
             self.store(filename, u'[', 'w')
+
+            flag = 0 # the first valid DATA
             for i in range(end-start+1):
                 index = start + i
                 print('Processing index:', str(index))
@@ -81,57 +83,25 @@ class PttWebCrawler(object):
                         link = self.PTT_URL + href
                         article_id = re.sub('\.html', '', href.split('/')[-1])
                         # if div == divs[-1] and i == 1:  # last div of last page
-                        if div == divs[-1] and i == end-start:  # last div of last page
-                            print('FUCKKKK =====')
-                            self.store(filename, self.parse(link, article_id, board), 'a')
-                            # self.store(filename, self.parse(link, article_id, board))
-                            # self.store(filename, self.parse(link, article_id, board) + '\n', 'a')
+
+                        DATA = self.parse(link, article_id, board)
+                        if not DATA :
+                            print(" ==== Title or content contain somthing we don't want ==== ")
                         else:
-                            self.store(filename, self.parse(link, article_id, board) + ',\n', 'a')
-                            # self.store(filename, self.parse(link, article_id, board) + '\n', 'a')
+                            if flag == 0:
+                                flag += 1
+                                self.store(filename, DATA, 'a')
+                            else:
+                                self.store(filename, ',\n' + DATA, 'a')
+                        # if div == divs[-1] and i == end-start:  # last div of last page
+                        #     self.store(filename, DATA, 'a')
+                        # else:
+                        #     self.store(filename, DATA + ',\n', 'a')
                     except:
                         pass
                 time.sleep(0.1)
             # self.store(filename, u']}', 'a')
             self.store(filename, u']', 'a')
-
-            """
-            json and csv converter
-
-
-            x = [
-                {
-                    "pk": 22,
-                    "model": "auth.permission",
-                    "fields": {
-                        "codename": "add_logentry",
-                        "name": "Can add log entry",
-                        "content_type": 8
-                    }
-                },
-                {
-                    "pk": 23,
-                    "model": "auth.permission",
-                    "fields": {
-                        "codename": "change_logentry",
-                        "name": "Can change log entry",
-                        "content_type": 8
-                    }
-                },
-                {
-                    "pk": 24,
-                    "model": "auth.permission",
-                    "fields": {
-                        "codename": "delete_logentry",
-                        "name": "Can delete log entry",
-                        "content_type": 8
-                    }
-                }
-            ]
-
-            """
-            # x = json.loads(filename)
-            # f = csv.writer(open("test.csv", "wb+"))
             return filename
 
     def parse_article(self, article_id, board, path='.'):
@@ -166,18 +136,14 @@ class PttWebCrawler(object):
             for meta in main_content.select('div.article-metaline-right'):
                 meta.extract()
 
+        # put which condition that you don't want the entire article
+        # return None
+        ####################
+        if u'公告' in title or u'新聞' in title: 
+            return None
+        ####################
         # remove and keep push nodes
         pushes = main_content.find_all('div', class_='push')
-        ####################
-        # if u'公告' in title: 
-        #     return
-        if u'公告' in title or u'新聞' in title: 
-            return
-        # if u'黑特' not in title: 
-            # return
-        ####################
-
-
         for push in pushes:
             push.extract()
 

@@ -179,6 +179,7 @@ class json2csv(object):
                 author = row[2]
                 date = row[3]
                 corpus = row[4]
+                # ADD delimiters after '，', e.g '，｜、'
                 sentences = corpus.split('，')
                 for s in sentences:
                     f.writerow([ID, title, author, date, s])

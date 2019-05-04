@@ -1,0 +1,2 @@
+python3 pttCrawler.py -b HatePolitics -i -10 0
+python3 convert2sentences.py -b HatePolitics -i -10 0

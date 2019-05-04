@@ -19,4 +19,4 @@ For wiki data collection
 <br />
 <br />
 python wikiCrawler.py -l 20  <br />
-   (It means the number of collected articles from the category of "政治" on wikipedia is 20.)
+   (It means the number of collected articles from the category of "臺灣政治" on wikipedia is 20.)

@@ -471,4 +471,8 @@ if __name__ == '__main__':
 # 9.
 # python isalpha()
 
+"""
+ref:
+1. https://medium.com/@gotraveltoworld/%E7%94%A8python%E9%81%8E%E6%BF%BE%E6%A8%99%E9%BB%9E%E7%AC%A6%E8%99%9F-punctuations-%E5%92%8C%E8%A1%A8%E6%83%85%E7%AC%A6%E8%99%9F-emojis-c31a9a2422d5
+"""
 

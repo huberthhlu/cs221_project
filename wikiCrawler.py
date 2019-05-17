@@ -17,6 +17,7 @@ logging.basicConfig(level=logging.INFO)
 
 class wikiCrawler(object):
 	def __init__(self, cmdline=None, as_lib=False):
+		self.mylist = []
 		self.check = False
 		parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description='''
 			Wiki Crawler
@@ -33,6 +34,7 @@ class wikiCrawler(object):
 
 			self.parse_wiki(limit)
 		
+
 	def parse_wiki(self, limit):
 		pageLimit = int(limit)
 		category = u'臺灣政治'
@@ -61,8 +63,8 @@ class wikiCrawler(object):
 		        for title in sorted(categories.keys()):
 		            print("%s: %s" % (title, categories[title]))
 
-
-		def parseArticles(self, categorymembers, level=0, max_level=1, mylist = []):
+		def parseArticles(self, categorymembers, level=0, max_level=1):
+		# def parseArticles(self, categorymembers, level=0, max_level=1, mylist = []):
 			if self.check == True: 
 				return
 			idcount = id
@@ -87,25 +89,30 @@ class wikiCrawler(object):
 					main_content = re.sub(r'http\S+', '', main_content) ###			
 					title = HanziConv.toTraditional(title)
 					main_content = HanziConv.toTraditional(main_content)
-					count = len(mylist)
+					if self.mylist == []:
+						count = 0
+					else:
+						count = len(self.mylist)
 					print (count)
 					if count > pageLimit:
 						self.check = True
 						# print('*'*10, len(mylist))
-						return mylist
+						return
 					
-					mylist.append((count, title, main_content))					
+					self.mylist.append((count, title, main_content))					
 				if c.ns == wikipediaapi.Namespace.CATEGORY and level < max_level and self.check == False:
-					parseArticles(self, c.categorymembers, level=level + 1, max_level=max_level, mylist = mylist)
+					parseArticles(self, c.categorymembers, level=level + 1, max_level=max_level)
+					# parseArticles(self, c.categorymembers, level=level + 1, max_level=max_level, mylist = mylist)
 
 		cat = wiki_wiki.page('Category:'+ category)
 		filename = 'wiki_test'
 		f = csv.writer(open(filename+'.csv', "w"))
 		f.writerow(["id", "title", "content"])
 		idcount = 0
-		mylist = parseArticles(self, cat.categorymembers)
-		print('*'*10, len(mylist))
-		for a, b, c in mylist:
+		parseArticles(self, cat.categorymembers)
+		# mylist = parseArticles(self, cat.categorymembers)
+		# print('*'*10, len(mylist))
+		for a, b, c in self.mylist:
 			f.writerow([a, b,c])
 		########### Sentence-wise Data from Wiki
 		newfilename = "wiki_sentence.csv"

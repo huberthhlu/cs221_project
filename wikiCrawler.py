@@ -36,6 +36,8 @@ class wikiCrawler(object):
 	def parse_wiki(self, limit):
 		pageLimit = int(limit)
 		category = u'臺灣政治'
+		# category = u'中立的观点'
+		
 		# wiki_wiki = wikipediaapi.Wikipedia('en')
 		wiki_wiki = wikipediaapi.Wikipedia(
 		    language='zh-tw',
@@ -89,7 +91,9 @@ class wikiCrawler(object):
 					print (count)
 					if count > pageLimit:
 						self.check = True
-						return
+						# print('*'*10, len(mylist))
+						return mylist
+					
 					mylist.append((count, title, main_content))					
 				if c.ns == wikipediaapi.Namespace.CATEGORY and level < max_level and self.check == False:
 					parseArticles(self, c.categorymembers, level=level + 1, max_level=max_level, mylist = mylist)
@@ -99,11 +103,41 @@ class wikiCrawler(object):
 		f = csv.writer(open(filename+'.csv', "w"))
 		f.writerow(["id", "title", "content"])
 		idcount = 0
-		mylist = []
-		parseArticles(self, cat.categorymembers)
-
+		mylist = parseArticles(self, cat.categorymembers)
+		print('*'*10, len(mylist))
 		for a, b, c in mylist:
 			f.writerow([a, b,c])
+		########### Sentence-wise Data from Wiki
+		newfilename = "wiki_sentence.csv"
+		f = csv.writer(open(newfilename, "w"))
+		f.writerow(["id", "title", "sentences"])
+		filename = 'wiki_test.csv'
+		path = './'
+		filename = os.path.join(path, filename)
+
+		with open(filename, 'r') as csvfile: 
+			# creating a csv reader object 
+			csvreader = csv.reader(csvfile) 
+			# extracting field names through first row 
+			fields = next(csvreader) 
+			for row in csvreader:
+				id1 = row[0]
+				title = row[1]
+				content = row[2]
+				# ADD delimiters after '，', e.g '，｜、'
+				# sentences = content.split('，')
+				
+				sentences = re.split('，|。', content)
+				# sentences = re.split('，|。', content)
+				for i in range(len(sentences)):
+				# for s in sentences:
+					if len(sentences[i]) < 7 and i != len(sentences) - 1:
+						sentences[i + 1] = sentences[i] + sentences[i + 1]
+					else:
+						f.writerow([id1, title, sentences[i]])
+		print("===================================")
+		print("DONE!")
+		print("Filename: {} has store in current directory!".format(newfilename))
 
 if __name__ == '__main__':
     c = wikiCrawler()

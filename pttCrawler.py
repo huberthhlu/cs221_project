@@ -13,6 +13,8 @@ import time
 import codecs
 from bs4 import BeautifulSoup
 from six import u
+from filter_text import Filter_Text   # emoji filter
+
 
 __version__ = '1.0'
 
@@ -85,6 +87,7 @@ class PttWebCrawler(object):
                         # if div == divs[-1] and i == 1:  # last div of last page
 
                         DATA = self.parse(link, article_id, board)
+                        # DATA = self.parse(article_id)
                         if not DATA :
                             print(" ==== Title or content contain somthing we don't want ==== ")
                         else:
@@ -153,20 +156,37 @@ class PttWebCrawler(object):
         except:
             ip = "None"
 
+
+        ########################### Content Filtering ###########################
         # 移除 '※ 發信站:' (starts with u'\u203b'), '◆ From:' (starts with u'\u25c6'), 空行及多餘空白
         # 保留英數字, 中文及中文標點, 網址, 部分特殊符號
+
+        # filtered = [ v for v in main_content.stripped_strings if v[0] not in [u'※', u'◆'] and v[:2] not in [u'--']]
+        # expr = re.compile(u(r'[^\u4e00-\u9fa5\u3002\uff1b\uff0c\uff1a\u201c\u201d\uff08\uff09\u3001\uff1f\u300a\u300b\s\w:/-_.?~%()]'))
+        # for i in range(len(filtered)):
+        #     filtered[i] = re.sub(expr, '', filtered[i])
+        # filtered = [_f for _f in filtered if _f]  # remove empty strings
+        # filtered = [x for x in filtered if article_id not in x]  # remove last line containing the url of the article
+        # content = ' '.join(filtered)
+        # content = re.sub(r'(\s)+', ' ', content)
+        # content = re.sub(r'http\S+', '', content) ###
+
         filtered = [ v for v in main_content.stripped_strings if v[0] not in [u'※', u'◆'] and v[:2] not in [u'--']]
         expr = re.compile(u(r'[^\u4e00-\u9fa5\u3002\uff1b\uff0c\uff1a\u201c\u201d\uff08\uff09\u3001\uff1f\u300a\u300b\s\w:/-_.?~%()]'))
-
         for i in range(len(filtered)):
             filtered[i] = re.sub(expr, '', filtered[i])
-
         filtered = [_f for _f in filtered if _f]  # remove empty strings
         filtered = [x for x in filtered if article_id not in x]  # remove last line containing the url of the article
         content = ' '.join(filtered)
+        content = re.sub("[A-Za-z]", '', content)
+        content = re.sub('\[.+\]', '', content) # to strip out [???] from a string 
+        # content = re.sub('\([^)]*\)', '', content) # to strip out <p> and </p> from a string 
+        # clean = re.compile('<.*?>') # to strip out <p> and </p> from a string 
+        # content = re.sub(clean, ' ', content)
         content = re.sub(r'(\s)+', ' ', content)
         content = re.sub(r'http\S+', '', content) ###
 
+        ########################### Content Filtering ###########################
         # print 'content', content
 
         # push messages
@@ -232,7 +252,6 @@ class PttWebCrawler(object):
 
     """
     json and csv converter
-
     """
 
     @staticmethod
@@ -284,13 +303,7 @@ class json2csv(object):
 
         filename = board + '-' + str(start) + '-' + str(end) + '.json'
         filename = os.path.join(path, filename)
-        # with open(filename,'w',encoding='utf-8', errors='ignore') as filehandle:
-        #     # filehandle.seek(-2, os.SEEK_END)
-        #     # filehandle.seek(0, 2)
-        #     # filehandle.seek(-3, 2)
-        #     filehandle.seek(0, os.SEEK_END)
-        #     filehandle.seek(filehandle.tell() - 1, os.SEEK_SET)
-        #     filehandle.truncate()
+
         with open(filename,encoding='utf-8', errors='ignore') as json_data:
             x = json.load(json_data, strict = False)
         f = csv.writer(open("test.csv", "w"))
@@ -315,10 +328,126 @@ class json2csv(object):
                         # x["content"],
                         x["content"]])
 
+class json2csv(object):
+    PTT_URL = 'https://www.ptt.cc'
+
+    """docstring for PttWebCrawler"""
+    def __init__(self, cmdline=None, as_lib=False):
+        self.board = 0
+        self.end = 0
+        self.start = 0
+        self.path = '.'
+        parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description='''
+            A crawler for the web version of PTT, the largest online community in Taiwan.
+            Input: board name and page indices (or articla ID)
+            Output: BOARD_NAME-START_INDEX-END_INDEX.json (or BOARD_NAME-ID.json)
+        ''')
+        parser.add_argument('-b', metavar='BOARD_NAME', help='Board name', required=True)
+        group = parser.add_mutually_exclusive_group(required=True)
+        group.add_argument('-i', metavar=('START_INDEX', 'END_INDEX'), type=int, nargs=2, help="Start and end index")
+        group.add_argument('-a', metavar='ARTICLE_ID', help="Article ID")
+        parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
+
+        if not as_lib:
+            if cmdline:
+                args = parser.parse_args(cmdline)
+            else:
+                args = parser.parse_args()
+            self.board = args.b
+            if args.i:
+                self.start = args.i[0]
+                if args.i[1] == -1:
+                    self.end = self.getLastPage(board)
+                else:
+                    self.end = args.i[1]
+            else:  # args.a
+                article_id = args.a
+            
+            
+    def subFunction(self):
+        board = self.board
+        path = self.path
+        end = self.end
+        start = self.start
+        newFilename = board + '-' + str(start) + '-' + str(end)
+        newFilename = os.path.join(path, newFilename)
+        filename = board + '-' + str(start) + '-' + str(end) + '.json'
+        filename = os.path.join(path, filename)
+        print ('JSON file : ', filename)
+        with open(filename,encoding='utf-8', errors='ignore') as json_data:
+            x = json.load(json_data, strict = False)
+        f = csv.writer(open(newFilename+'.csv', "w"))
+        f.writerow(["article_id", "article_title", "author", "date", "content"])
+        """
+                    'url': link,
+                    'board': board,
+                    'article_id': article_id,
+                    'article_title': title,
+                    'author': author,
+                    'date': date,
+                    'content': content,
+                    'ip': ip,
+                    'message_count': message_count,
+                    'messages': messages
+        """
+        for x in x:
+            f.writerow([x["article_id"],
+                        x["article_title"],
+                        x["author"],
+                        x["date"],
+                        x["content"]])
+
+    def extractSentece(self):
+        board = self.board
+        path = self.path
+        end = self.end
+        start = self.start
+        print ('board = ', board)
+        print ('path = ', path)
+        print ('end = ', end)
+        print ('start = ', start)
+
+        newfilename = "sentences_Data_Ptt.csv"
+        f = csv.writer(open(newfilename, "w"))
+        # f.writerow(["article_id", "article_title", "author", "date", "sentences"])
+        f.writerow(["id", "title", "sentences"])
+        filename = board + '-' + str(start) + '-' + str(end) + '.csv'
+        filename = os.path.join(path, filename)
+
+
+        with open(filename, 'r') as csvfile: 
+            # creating a csv reader object 
+            csvreader = csv.reader(csvfile) 
+            # extracting field names through first row 
+            fields = next(csvreader) 
+            for row in csvreader:
+                ID = row[0]
+                title = row[1]
+                author = row[2]
+                date = row[3]
+                corpus = row[4]
+
+                sentences = re.split('，|。| ', corpus)
+                for i in range(len(sentences)):
+                    sentences[i] = Filter_Text().filtet_text(sentences[i]) # emoji filter!!!!
+                    if len(sentences[i]) < 7 and i != len(sentences) - 1:
+                        sentences[i + 1] = sentences[i] + sentences[i + 1]
+                    else:
+                        if len(sentences[i]) >= 7:
+                            # f.writerow([ID, title, sentences[i]])
+                            if len(re.sub("^[0-9]*$", '', sentences[i])) > 5:  # exclud the string only contains numbers
+                                f.writerow([ID, title, sentences[i]])
+
+        print("===================================")
+        print("DONE!")
+        print("Filename: {} has store in current directory!".format(newfilename))
+
 if __name__ == '__main__':
     c = PttWebCrawler()
-    # converter = json2csv()
-    # converter.subFunction()
+    converter = json2csv()
+    converter.subFunction()
+    converter1 = json2csv()
+    converter1.extractSentece()
 
 
 # https://github.com/jwlin/ptt-web-crawler
@@ -341,3 +470,5 @@ if __name__ == '__main__':
 # 8. 表情符號 =.=?
 # 9.
 # python isalpha()
+
+

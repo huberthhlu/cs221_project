@@ -15,7 +15,6 @@ from bs4 import BeautifulSoup
 from six import u
 from filter_text import Filter_Text   # emoji filter
 
-
 __version__ = '1.0'
 
 # if python 2, disable verify flag in requests.get()
@@ -259,74 +258,7 @@ class PttWebCrawler(object):
         with codecs.open(filename, mode, encoding='utf-8') as f:
             return json.load(f)
 
-class json2csv(object):
-    PTT_URL = 'https://www.ptt.cc'
 
-    """docstring for PttWebCrawler"""
-    def __init__(self, cmdline=None, as_lib=False):
-        self.board = 0
-        self.end = 0
-        self.start = 0
-        self.path = '.'
-        parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description='''
-            A crawler for the web version of PTT, the largest online community in Taiwan.
-            Input: board name and page indices (or articla ID)
-            Output: BOARD_NAME-START_INDEX-END_INDEX.json (or BOARD_NAME-ID.json)
-        ''')
-        parser.add_argument('-b', metavar='BOARD_NAME', help='Board name', required=True)
-        group = parser.add_mutually_exclusive_group(required=True)
-        group.add_argument('-i', metavar=('START_INDEX', 'END_INDEX'), type=int, nargs=2, help="Start and end index")
-        group.add_argument('-a', metavar='ARTICLE_ID', help="Article ID")
-        parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
-
-        if not as_lib:
-            if cmdline:
-                args = parser.parse_args(cmdline)
-            else:
-                args = parser.parse_args()
-            self.board = args.b
-            if args.i:
-                self.start = args.i[0]
-                if args.i[1] == -1:
-                    self.end = self.getLastPage(board)
-                else:
-                    self.end = args.i[1]
-            else:  # args.a
-                article_id = args.a
-            
-            
-    def subFunction(self):
-        board = self.board
-        path = self.path
-        end = self.end
-        start = self.start
-
-        filename = board + '-' + str(start) + '-' + str(end) + '.json'
-        filename = os.path.join(path, filename)
-
-        with open(filename,encoding='utf-8', errors='ignore') as json_data:
-            x = json.load(json_data, strict = False)
-        f = csv.writer(open("test.csv", "w"))
-        f.writerow(["article_id", "article_title", "author", "date", "content"])
-        """
-                    'url': link,
-                    'board': board,
-                    'article_id': article_id,
-                    'article_title': title,
-                    'author': author,
-                    'date': date,
-                    'content': content,
-                    'ip': ip,
-                    'message_count': message_count,
-                    'messages': messages
-        """
-        for x in x:
-            f.writerow([x["article_id"],
-                        x["article_title"],
-                        x["author"],
-                        x["date"],
-                        # x["content"],
-                        x["content"]])
 
 class json2csv(object):
     PTT_URL = 'https://www.ptt.cc'
@@ -410,18 +342,18 @@ class json2csv(object):
         newfilename = "sentences_Data_Ptt.csv"
         f = csv.writer(open(newfilename, "w"))
         # f.writerow(["article_id", "article_title", "author", "date", "sentences"])
-        f.writerow(["id", "title", "sentences"])
+        f.writerow(["label","id", "title", "sentences"])
         filename = board + '-' + str(start) + '-' + str(end) + '.csv'
         filename = os.path.join(path, filename)
 
-
+        ID = 0
         with open(filename, 'r') as csvfile: 
             # creating a csv reader object 
             csvreader = csv.reader(csvfile) 
             # extracting field names through first row 
             fields = next(csvreader) 
             for row in csvreader:
-                ID = row[0]
+                # ID = row[0]
                 title = row[1]
                 author = row[2]
                 date = row[3]
@@ -430,13 +362,14 @@ class json2csv(object):
                 sentences = re.split('，|。| ', corpus)
                 for i in range(len(sentences)):
                     sentences[i] = Filter_Text().filtet_text(sentences[i]) # emoji filter!!!!
-                    if len(sentences[i]) < 7 and i != len(sentences) - 1:
+                    if len(sentences[i]) < 7 and i == len(sentences) -1:
+                        continue
+                    elif len(sentences[i]) < 7:
                         sentences[i + 1] = sentences[i] + sentences[i + 1]
                     else:
-                        if len(sentences[i]) >= 7:
-                            # f.writerow([ID, title, sentences[i]])
-                            if len(re.sub("^[0-9]*$", '', sentences[i])) > 5:  # exclud the string only contains numbers
-                                f.writerow([ID, title, sentences[i]])
+                        if len(re.sub("^[0-9]*$", '', sentences[i])) <= 1: continue  # exclud the string only contains numbers
+                        f.writerow([1 ,ID, title, sentences[i]]) # 1 means label this sentence as 1(subjective)
+                        ID += 1
 
         print("===================================")
         print("DONE!")
@@ -444,6 +377,8 @@ class json2csv(object):
 
 if __name__ == '__main__':
     c = PttWebCrawler()
+    print("Convert json to csv...")
+    print("===================================")
     converter = json2csv()
     converter.subFunction()
     converter1 = json2csv()

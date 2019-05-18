@@ -117,31 +117,35 @@ class wikiCrawler(object):
 		########### Sentence-wise Data from Wiki
 		newfilename = "wiki_sentence.csv"
 		f = csv.writer(open(newfilename, "w"))
-		f.writerow(["id", "title", "sentences"])
+		f.writerow(["label", "id", "title", "sentences"])
 		filename = 'wiki_test.csv'
 		path = './'
 		filename = os.path.join(path, filename)
 
+		id1 = 0
 		with open(filename, 'r') as csvfile: 
 			# creating a csv reader object 
 			csvreader = csv.reader(csvfile) 
 			# extracting field names through first row 
 			fields = next(csvreader) 
 			for row in csvreader:
-				id1 = row[0]
+				# id1 = row[0]
 				title = row[1]
 				content = row[2]
 				# ADD delimiters after '，', e.g '，｜、'
 				# sentences = content.split('，')
 				
-				sentences = re.split('，|。', content)
+				sentences = re.split('，|。| ', content)
 				# sentences = re.split('，|。', content)
 				for i in range(len(sentences)):
 				# for s in sentences:
-					if len(sentences[i]) < 7 and i != len(sentences) - 1:
+					if len(sentences[i]) < 7 and i == len(sentences) - 1:
+						continue
+					elif len(sentences[i]) < 7:
 						sentences[i + 1] = sentences[i] + sentences[i + 1]
 					else:
-						f.writerow([id1, title, sentences[i]])
+						f.writerow([0, id1, title, sentences[i]])
+						id1 += 1
 		print("===================================")
 		print("DONE!")
 		print("Filename: {} has store in current directory!".format(newfilename))

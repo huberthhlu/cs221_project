@@ -94,9 +94,9 @@ imp.reload(sys)
 
 # 加载文件，导入数据,分词
 def newloadfile():
-	obj_filename = './sentences_Data_Ptt_large.csv'
-	sub_filename = './wiki_sentence_medium.csv'
-	p = 0.68  # 68% of the lines (19219/28027)
+	obj_filename = './wiki_sentence_small.csv' # 887
+	sub_filename = './ptt_data/ptt_data_small.csv' #4719
+	p = 0.2  # 20% of ptt_data lines
 	# keep the header, then take only 3.16% of lines
 	# if random from [0,1] interval is greater than 0.01 the row will be skipped
 	# obj = pd.read_csv(obj_filename, header = 0, skiprows = lambda i: i>0 and random.random() > p)
@@ -107,10 +107,13 @@ def newloadfile():
 	sub = pd.read_csv(sub_filename, header = 0, index_col = None, error_bad_lines = False, skip_blank_lines=True)
 	sub.dropna(how="all", inplace=True)
 	cw = lambda x: list(jieba.cut(x))
-	print('==== ',obj.dtypes)
+	print('======================================== ')
+	print(obj.head(5))
+	print(sub.head(5))
 	# obj['words'] = obj[2].apply(cw)
-	# sub['words'] = sub[2].apply(cw)
+	# sub['words'] = sub[3].apply(cw)
 
+	print( obj['words'])
 
 
 
@@ -121,6 +124,7 @@ def newloadfile():
 	# mapper = df.to_replace.isin(map_values)
 	# df.loc[mapper, 'to_replace'] = df.loc[mapper, 'to_replace'].apply(lambda row: map_values[row])
 	# df.fillna('', inplace=True)
+
 	# #print pos['words']
 	# #use 1 for objective sentences, 0 for subjective sentences
 	# y = np.concatenate((np.ones(len(obj)), np.zeros(len(sub))))

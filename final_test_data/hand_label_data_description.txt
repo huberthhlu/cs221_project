@@ -1,0 +1,31 @@
+Hand_label_data contains 10 news relative to Taiwan politics and each news' review on https://tw.news.yahoo.com/politics. 
+
+# Note: label的時候順便修一下sentence把空格和一堆問號之類的都調整成正常句子的樣子，因為最後還是要丟進model裡。我在想要不要這份每次自己label完直接用fb傳給對方更新過的。Lebal的時候不要參考對方的答案。
+
+
+Label:
+
+objective == 0
+subjective == 1
+unknown == 2
+
+The file contains the hand_label of two members in this project based on our individual knowledge and personal feeling. 
+
+Shao-Yuan's definition of subjectivity:
+
+
+
+
+Shao-Yuan's definition of objectivity:
+
+
+
+
+Hubert's definition of subjectivity:
+
+
+
+
+Hubert's definition of objectivity:
+
+

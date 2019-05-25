@@ -8,8 +8,14 @@ shaoyuan = 'shaoyuan_hand_label.csv'
 
 hubert = pd.read_csv('hubert_hand_label.csv')
 shaoyuan = pd.read_csv('shaoyuan_hand_label.csv')
+hubert.dropna(how="all", inplace=True)
+shaoyuan.dropna(how="all", inplace=True)
 
 merged = hubert.merge(shaoyuan, on='sentences')
+merged['label_hubert'] = merged.label_hubert.astype(float)
+merged['label_hubert'] = merged.label_hubert.astype(int)
+merged['label_shaoyuan'] = merged.label_shaoyuan.astype(float)
+merged['label_shaoyuan'] = merged.label_shaoyuan.astype(int)
 merged.to_csv("merge.csv",index=False)
 
 
@@ -34,11 +40,11 @@ with open(filename, 'r') as csvfile:
 		sentence = row[0]
 		hubert_label = row[1]
 		shaoyuan_label = row[2]
-		# print("H: {} ; SY: {}".format(hubert_label,shaoyuan_label))
+		print("H: {} ; SY: {}".format(hubert_label,shaoyuan_label))
 		n += 1
-		if hubert_label == '2.0': 
+		if hubert_label == '2': 
 			hubert_unknown += 1
-		if shaoyuan_label == '2.0': 
+		if shaoyuan_label == '2': 
 			shaoyuan_unknown += 1
 		if hubert_label != shaoyuan_label: 
 			different += 1

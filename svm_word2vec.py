@@ -70,12 +70,41 @@ def most_similar(w2v_model, words, topn=10):
     return similar_df
 
 ## Trian svm model
-def svm_train(train_vecs, y_train, test_vecs, y_test):
+def svm_train(train_vecs, y_train, test_vecs, y_test, model,n_dim):
     clf=SVC(kernel='rbf',verbose=True)
     clf.fit(train_vecs,y_train)
     # joblib.dump(clf, 'svm_data/svm_w2v_model.pkl')         # save the trained model
     # clf_load = joblib.load('svm_data/clf.pkl')   # load the trained model
+
+    print("cross validation:")
+    print("====================")
     print (clf.score(test_vecs,y_test))
+
+    data = './final_test_data/merge.csv'
+    final = pd.read_csv(data, header = 0, skip_blank_lines=True)
+    final.dropna(how="all", inplace=True)
+
+    final_x = final['sentences']
+    final_y_sy = final['label_shaoyuan'].astype(int)
+    final_y_h = final['label_hubert'].astype(int)
+    model.train(final_x, total_examples=model.corpus_count, epochs=model.iter)
+    final_vecs = np.concatenate([buildWordVector(z, n_dim, model) for z in final_x])
+    
+    # print(final_vecs.shape)
+    # print(final_vecs)
+    # print(final_y_sy)
+    print("predict ShaoYuan_hand_label data:")
+    print("====================")
+    print(clf.score(final_vecs, final_y_sy))
+    print("predict Hubert_hand_label data:")
+    print("====================")
+    H_data = './final_test_data/hubert_hand_label.csv'
+    print(clf.score(final_vecs, final_y_h))
+
+
+
+    
+
 
 if __name__=='__main__':
 
@@ -105,7 +134,7 @@ if __name__=='__main__':
     similar_df = most_similar(model, ['中華','民國', '中國','大陸','根據','政府', '柯文', '行政院', '只要', '我','明天', '同婚', '就', '這邊', '小英', '明年','柯黑','台灣','法律','選舉','《','草包','韓國瑜'])
     similar_df.to_csv('similar_words_Skip-gram.csv')
 
-    svm_train(train_vecs, y_train, test_vecs, y_test)
+    svm_train(train_vecs, y_train, test_vecs, y_test, model, n_dim)
 
 
 

@@ -34,10 +34,10 @@ def newloadfile():
     # print('======================================== ')
     obj['words'] = obj['sentences'].apply(cw)
     sub['words'] = sub['sentences'].apply(cw)
-    print('======================================== ')
-    print(obj.words.head(20))
-    print(sub.words.head(20))
-    print('======================================== ')
+    # print('======================================== ')
+    # print(obj.words.head(20))
+    # print(sub.words.head(20))
+    # print('======================================== ')
 
     y = np.concatenate((np.ones(len(sub)), np.zeros(len(obj)))) # subjective == 1, objective == 0
     x_train, x_test, y_train, y_test = train_test_split(np.concatenate((sub['words'], obj['words'])), y, test_size=0.2)
@@ -70,12 +70,40 @@ def most_similar(w2v_model, words, topn=10):
     return similar_df
 
 ## Trian svm model
-def svm_train(train_vecs, y_train, test_vecs, y_test):
+def svm_train(train_vecs, y_train, test_vecs, y_test, model,n_dim):
     clf=SVC(kernel='rbf',verbose=True)
     clf.fit(train_vecs,y_train)
-    # joblib.dump(clf, 'svm_data/svm_w2v_model.pkl')         # save the trained model
+    joblib.dump(clf, 'svm_data/svm_w2v_clf.pkl')         # save the trained model
     # clf_load = joblib.load('svm_data/clf.pkl')   # load the trained model
+
+    print("cross validation:")
+    print("====================")
     print (clf.score(test_vecs,y_test))
+
+
+def svm_finaltest(n_dim):
+    data = './final_test_data/merge.csv'
+    final = pd.read_csv(data, header = 0, skip_blank_lines=True)
+    final.dropna(how="all", inplace=True)
+
+    final_x = final['sentences']
+    final_y_sy = final['label_shaoyuan'].astype(int)
+    final_y_h = final['label_hubert'].astype(int)
+    model = joblib.load('svm_data/w2v_model.pkl')
+    model.train(final_x, total_examples=model.corpus_count, epochs=model.iter)
+    final_vecs = np.concatenate([buildWordVector(z, n_dim, model) for z in final_x])
+    
+    # print(final_vecs.shape)
+    # print(final_vecs)
+    # print(final_y_sy)
+
+    clf = joblib.load('svm_data/svm_w2v_clf.pkl')
+    print("predict ShaoYuan_hand_label data:")
+    print("====================")
+    print(clf.score(final_vecs, final_y_sy))
+    print("predict Hubert_hand_label data:")
+    print("====================")
+    print(clf.score(final_vecs, final_y_h))
 
 if __name__=='__main__':
 
@@ -95,7 +123,7 @@ if __name__=='__main__':
 
     #Train word2vec on test tweets
     model.train(x_test,total_examples=model.corpus_count, epochs=model.iter)
-    # model.save('svm_data/w2v_model.pkl')
+    joblib.dump(model, 'svm_data/w2v_model.pkl')
     #Build test tweet vectors then scale
     test_vecs = np.concatenate([buildWordVector(z, n_dim,model) for z in x_test])
     #test_vecs = scale(test_vecs)
@@ -104,9 +132,9 @@ if __name__=='__main__':
 
     similar_df = most_similar(model, ['中華','民國', '中國','大陸','根據','政府', '柯文', '行政院', '只要', '我','明天', '同婚', '就', '這邊', '小英', '明年','柯黑','台灣','法律','選舉','《','草包','韓國瑜'])
     similar_df.to_csv('similar_words_Skip-gram.csv')
-
-    svm_train(train_vecs, y_train, test_vecs, y_test)
-
+    # print(len(model.wv.vocab))
+    svm_train(train_vecs, y_train, test_vecs, y_test, model, n_dim)
+    svm_finaltest(n_dim)
 
 
 

@@ -25,9 +25,19 @@ from gensim.models.word2vec import Word2Vec
 from gensim.corpora.dictionary import Dictionary
 from keras.preprocessing import sequence
 import multiprocessing
-# from sklearn.cross_validation import train_test_split
 from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer
+"""
+TF-IDF: “Term Frequency – Inverse Document”
 
+One issue with simple counts is that some words like “the” 
+will appear many times and their large counts will not be very meaningful in the encoded vectors.
+Without going into the math, TF-IDF are word frequency scores that try to highlight words that are more interesting, 
+    e.g. frequent in a document but not across documents.
+
+
+"""
 from keras.models import Sequential
 from keras.layers.embeddings import Embedding
 from keras.layers.recurrent import LSTM
@@ -36,50 +46,122 @@ from keras.models import model_from_yaml
 import sys
 import yaml
 import keras
+import imp
 
 
-obj_filename = './sentences_Data_Ptt_large.csv'
-sub_filename = './wiki_sentence_medium.csv'
-# obj = pd.read_csv('./sentences_Data_Ptt_large.csv',header=None,index_col=None)
-# sub = pd.read_csv('../wiki_sentence_small.csv',header=None,index_col=None,error_bad_lines=False)
 
 
-# p = 0.0316  # 3.16% of the lines (886/28027)
-p = 0.68  # 68% of the lines (19219/28027)
-# keep the header, then take only 3.16% of lines
-# if random from [0,1] interval is greater than 0.01 the row will be skipped
-# obj = pd.read_csv(obj_filename, header = 0, skiprows = lambda i: i>0 and random.random() > p)
-obj = pd.read_csv(obj_filename, usecols=['sentences'],header = 0, skiprows = lambda i: i>0 and random.random() > p, skip_blank_lines=True)
-obj.dropna(how="all", inplace=True)
-sub = pd.read_csv(sub_filename, usecols=['sentences'], header = 0, index_col = None, error_bad_lines = False, skip_blank_lines=True)
-sub.dropna(how="all", inplace=True)
+
+imp.reload(sys)
+
+def newloadfile():
+    obj_filename = './wiki_data/wiki_sentence_12381.csv' # 12381
+    sub_filename = './ptt_data/ptt_data_18607.csv' #18607
+    p = 0.66  # 20% of ptt_data lines
+    obj = pd.read_csv(obj_filename,header = 0, skip_blank_lines=True)
+    obj.dropna(how="all", inplace=True)
+    sub = pd.read_csv(sub_filename, header = 0, skiprows = lambda i: i>0 and random.random() > p, index_col = None, error_bad_lines = False, skip_blank_lines=True)
+    sub.dropna(how="all", inplace=True)
+    cw = lambda x: list(jieba.cut(x))
+
+    obj['words'] = obj['sentences'].apply(cw)
+    sub['words'] = sub['sentences'].apply(cw)
+    print('======================================== ')
+    print(obj.words.head(20))
+    print(sub.words.head(20))
+    print('======================================== ')
+
+    y = np.concatenate((np.ones(len(sub)), np.zeros(len(obj)))) # subjective == 1, objective == 0
+    x_train, x_test, y_train, y_test = train_test_split(np.concatenate((sub['words'], obj['words'])), y, test_size=0.2)
+    # np.save('svm_data/y_train.npy',y_train)
+    # np.save('svm_data/y_test.npy',y_test)
+    return x_train, x_test, y_train, y_test
+
+def buildWordVector(text, size, model):
+    vec = np.zeros(size).reshape((1, size))
+    count = 0.
+    for word in text:
+        try:
+            vec += model[word].reshape((1, size))
+            count += 1.
+        except KeyError:
+            continue
+    if count != 0:
+        vec /= count
+    return vec
 
 
-combined = np.concatenate((obj, sub))
-print(combined.shape)
 
-# combined = os.linesep.join([s for s in combined.splitlines() if s])
+# given a list of words, return a dataframe showing top10 similar words in the model
+def most_similar(w2v_model, words, topn=10):
+    similar_df = pd.DataFrame()
+    for word in words:
+        try:
+            similar_words = pd.DataFrame(w2v_model.wv.most_similar(word, topn=topn), columns=[word, 'cos'])
+            similar_df = pd.concat([similar_df, similar_words], axis=1)
+        except:
+            print(word, "not found in Word2Vec model!")
+    return similar_df
 
-# obj data are labeled as "1" and sub data are labeled as "-1"
-y = np.concatenate((np.ones(len(obj), dtype=int), -1*np.ones(len(sub),dtype=int)))
-print(y.shape)
 
+## Trian LSTM model
+def LSTM_train(train_vecs, y_train, test_vecs, y_test, word_vectors):
+    model = Sequential()
+    model.add(Embedding(len(word_vectors.vocab)+1, 256))
+    model.add(LSTM(128)) # try using a GRU instead, for fun
+    model.add(Dropout(0.2))
+    model.add(Dense(1))
+    model.add(Activation('sigmoid'))
 
-#对句子经行分词，并去掉换行符
-def tokenizer(text):
-    ''' Simple Parser converting each document to lower-case, then
-        removing the breaks for new lines and finally splitting on the
-        whitespace
-    '''
-    text = [jieba.lcut(document.replace('\n', '')) for document in text]
-    return text
+    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    model.fit(train_vecs, y_train, batch_size=16, nb_epoch=10)  #训练时间为若干个小时
+    # model.fit(train_vecs, y_train, batch_size=16, nb_epoch=10)  #训练时间为若干个小时
+    classes = model.predict_classes(test_vecs)
+    acc = np_utils.accuracy(classes, y_test)
+    print('Test accuracy:', acc)
+    # print (model.score(test_vllecs,y_test))
+    score = model.evaluate(test_vecs, y_test, batch_size=batch_size)
+    print ('Test score:', score)
 
-# combined = tokenizer(combined)
+## Trian svm model
+def svm_train(train_vecs, y_train, test_vecs, y_test):
+    clf=SVC(kernel='rbf',verbose=True)
+    clf.fit(train_vecs,y_train)
+    # joblib.dump(clf, 'svm_data/svm_w2v_model.pkl')         # save the trained model
+    # clf_load = joblib.load('svm_data/clf.pkl')   # load the trained model
+    print (clf.score(test_vecs,y_test))
 
-document = combined[0]
-text = jieba.lcut(document)
-# print(document)
-print(text)
+if __name__=='__main__':
+
+    # Load data and do word segmentation
+    x_train, x_test, y_train, y_test = newloadfile()
+    
+    # calculate the vector using Word2Vec
+    n_dim = 250 # people usually use n_dim form 200 to 300
+    model=Word2Vec(size=n_dim, min_count=10, sg=1, iter=10)
+    # test min_count if data set increase, increase iter a little bit if data are larger
+    model.build_vocab(x_train, progress_per=1000)
+    # Train the model  (this may take several minutes)
+    model.train(x_train, total_examples=model.corpus_count, epochs=model.iter)
+    train_vecs = np.concatenate([buildWordVector(z, n_dim, model) for z in x_train])
+    np.save('svm_data/train_vecs.npy',train_vecs)
+    print ("train_vects.shape = {}".format(train_vecs.shape))
+
+    #Train word2vec on test tweets
+    model.train(x_test,total_examples=model.corpus_count, epochs=model.iter)
+    # model.save('svm_data/w2v_model.pkl')
+    #Build test tweet vectors then scale
+    test_vecs = np.concatenate([buildWordVector(z, n_dim,model) for z in x_test])
+    #test_vecs = scale(test_vecs)
+    np.save('svm_data/test_vecs.npy',test_vecs)
+    print ("test_vects.shape = {}".format(test_vecs.shape))
+
+    similar_df = most_similar(model, ['中華','民國', '中國','大陸','根據','政府', '柯文', '行政院', '只要', '我','明天', '同婚', '就', '這邊', '小英', '明年','柯黑','台灣','法律','選舉','《','草包','韓國瑜'])
+    similar_df.to_csv('similar_words_Skip-gram.csv')
+
+    # print(model.wv[])
+    LSTM_train(train_vecs, y_train, test_vecs, y_test, model.wv)
+
 
 
 

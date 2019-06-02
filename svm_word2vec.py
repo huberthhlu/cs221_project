@@ -133,7 +133,7 @@ if __name__=='__main__':
 
     similar_df = most_similar(model, ['中華','民國', '中國','大陸','根據','政府', '柯文', '行政院', '只要', '我','明天', '同婚', '就', '這邊', '小英', '明年','柯黑','台灣','法律','選舉','《','草包','韓國瑜'])
     similar_df.to_csv('similar_words_Skip-gram.csv')
-
+    # print(len(model.wv.vocab))
     svm_train(train_vecs, y_train, test_vecs, y_test, model, n_dim)
 
 

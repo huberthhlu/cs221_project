@@ -346,6 +346,40 @@ class json2csv(object):
         filename = board + '-' + str(start) + '-' + str(end) + '.csv'
         filename = os.path.join(path, filename)
 
+        def have_start_quote(s):
+            q = {u'「': u'」', 
+                u'（': u'）',
+                u'(':u')',
+                u'[':u']',
+                u'{':u'}',  
+                u'｢': u'｣', 
+                u'『': u'』',
+                u'【':u'】',
+                u'〔':u'〕',
+                u'〖':u'〗',
+                u'〘': u'〙',
+                u'〚':u'〛',
+                u'《':u'》'}
+            startlist = [u'（',u'(',u'[',u'{',u'【',u'〔',u'〖',u'〘',u'〚',u'《',u'｢',u'『',u'「']
+            # endlist =   [u'」',u'）'u')',u']',u'}',u'｣',u'』',u'】',u'〕',u'〗',u'〙',u'〛',u'》']
+            tmp = 'N'
+            for c in startlist:
+                if c in s:
+                    # print(c)
+                    tmp = q[c]
+                    if tmp in s:
+                        # print(tmp)
+                        tmp = 'N'
+
+            if not tmp=='N':
+                return True, tmp
+
+            return False, None
+
+        def checkend(sentence, symbol):
+            if symbol in sentence:
+                return True
+
         ID = 0
         with open(filename, 'r') as csvfile: 
             # creating a csv reader object 
@@ -359,17 +393,63 @@ class json2csv(object):
                 date = row[3]
                 corpus = row[4]
 
-                sentences = re.split('，|。| ', corpus)
-                for i in range(len(sentences)):
+
+                sentences = re.split(u'(，|。|,|:| )', corpus)
+                quote = False
+                S = sentences[0]
+                for i in range(1,len(sentences)):
                     sentences[i] = Filter_Text().filtet_text(sentences[i]) # emoji filter!!!!
-                    if len(sentences[i]) < 7 and i == len(sentences) -1:
+                    if quote:
+                        flag = checkend(sentences[i], symbol)
+                        if flag:
+                            quote = False
+
+                    if not quote:
+                        start, symbol = have_start_quote(sentences[i])
+                        if start:
+                            # print(sentences[i])
+                            # print(sentences[i+1])
+                            quote = True
+
+                    if len(re.sub("^[0-9]*$", '', sentences[i])) == 0 or len(re.sub(r"[a-zA-Z0-9./]",'',sentences[i])) == 0:
+                        if i == len(sentences): 
+                            if S == '':
+                                f.writerow([None ,ID, title, S])
+                            else:
+                                f.writerow([1 ,ID, title, S])
                         continue
-                    elif len(sentences[i]) < 7:
-                        sentences[i + 1] = sentences[i] + sentences[i + 1]
+                    if len(sentences[i]) < 7 or quote:
+                        if sentences[i] == ' ' or sentences[i] == ':':
+                            pass
+                        else:
+                            S += sentences[i]
+
+                        if i == len(sentences):
+                            if S == '':
+                                f.writerow([None ,ID, title, S])
+                            else:
+                                f.writerow([1 ,ID, title, S])
+                                S = ''
                     else:
-                        if len(re.sub("^[0-9]*$", '', sentences[i])) <= 1: continue  # exclud the string only contains numbers
-                        f.writerow([1 ,ID, title, sentences[i]]) # 1 means label this sentence as 1(subjective)
-                        ID += 1
+                        if S == '':
+                            f.writerow([None ,ID, title, S])
+                        else:
+                            f.writerow([1 ,ID, title, S]) # 1 means label this sentence as 1(subjective)
+                            S = sentences[i]
+                    ID += 1
+
+                # sentences = re.split(u'，|。|,| ', corpus)
+                # quotation = False
+                # for i in range(len(sentences)):
+                #     sentences[i] = Filter_Text().filtet_text(sentences[i]) # emoji filter!!!!
+                #     if len(sentences[i]) < 7 and i == len(sentences) -1:
+                #         continue
+                #     elif len(sentences[i]) < 7:
+                #         sentences[i + 1] = sentences[i] + sentences[i + 1]
+                #     else:
+                #         if len(re.sub("^[0-9]*$", '', sentences[i])) <= 1: continue  # exclud the string only contains numbers
+                #         f.writerow([1 ,ID, title, sentences[i]]) # 1 means label this sentence as 1(subjective)
+                #         ID += 1
 
         print("===================================")
         print("DONE!")

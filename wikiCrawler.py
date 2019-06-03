@@ -13,6 +13,8 @@ import wikipediaapi
 from hanziconv import HanziConv
 import csv
 import argparse
+from filter_text import Filter_Text   # emoji filter
+
 logging.basicConfig(level=logging.INFO)
 
 class wikiCrawler(object):
@@ -122,7 +124,41 @@ class wikiCrawler(object):
 		path = './'
 		filename = os.path.join(path, filename)
 
-		id1 = 0
+		def have_start_quote(s):
+			q = {u'「': u'」', 
+					u'（': u'）',
+					u'(':u')',
+					u'[':u']',
+					u'{':u'}',  
+					u'｢': u'｣', 
+					u'『': u'』',
+					u'【':u'】',
+					u'〔':u'〕',
+					u'〖':u'〗',
+					u'〘': u'〙',
+					u'〚':u'〛',
+					u'《':u'》'}
+			startlist = [u'（',u'(',u'[',u'{',u'【',u'〔',u'〖',u'〘',u'〚',u'《',u'｢',u'『',u'「']
+			# endlist =   [u'」',u'）'u')',u']',u'}',u'｣',u'』',u'】',u'〕',u'〗',u'〙',u'〛',u'》']
+			tmp = 'N'
+			for c in startlist:
+				if c in s:
+				# print(c)
+					tmp = q[c]
+					if tmp in s:
+						# print(tmp)
+						tmp = 'N'
+
+			if not tmp=='N':
+				return True, tmp
+
+			return False, None
+
+		def checkend(sentence, symbol):
+			if symbol in sentence:
+				return True
+
+		ID = 0
 		with open(filename, 'r') as csvfile: 
 			# creating a csv reader object 
 			csvreader = csv.reader(csvfile) 
@@ -134,18 +170,62 @@ class wikiCrawler(object):
 				content = row[2]
 				# ADD delimiters after '，', e.g '，｜、'
 				# sentences = content.split('，')
-				
-				sentences = re.split('，|。| ', content)
-				# sentences = re.split('，|。', content)
-				for i in range(len(sentences)):
-				# for s in sentences:
-					if len(sentences[i]) < 7 and i == len(sentences) - 1:
+				sentences = re.split(u'(，|。|,|:| )', content)
+				quote = False
+				S = sentences[0]
+				for i in range(1,len(sentences)):
+					sentences[i] = Filter_Text().filtet_text(sentences[i]) # emoji filter!!!!
+					if quote:
+						flag = checkend(sentences[i], symbol)
+						if flag:
+							quote = False
+
+					if not quote:
+						start, symbol = have_start_quote(sentences[i])
+						if start:
+							# print(sentences[i])
+							# print(sentences[i+1])
+							quote = True
+
+					if len(re.sub("^[0-9]*$", '', sentences[i])) == 0 or len(re.sub(r"[a-zA-Z0-9./]",'',sentences[i])) == 0:
+						if i == len(sentences): 
+							if S == '':
+								f.writerow([None ,ID, title, S])
+							else:
+								f.writerow([0 ,ID, title, S])
 						continue
-					elif len(sentences[i]) < 7:
-						sentences[i + 1] = sentences[i] + sentences[i + 1]
+					if len(sentences[i]) < 7 or quote:
+						if sentences[i] == ' ' or sentences[i] == ':':
+							pass
+						else:
+							S += sentences[i]
+
+						if i == len(sentences):
+							if S == '':
+								f.writerow([None ,ID, title, S])
+							else:
+								f.writerow([0 ,ID, title, S])
+								S = ''
 					else:
-						f.writerow([0, id1, title, sentences[i]])
-						id1 += 1
+						if S == '':
+							f.writerow([None ,ID, title, S])
+						else:
+							f.writerow([0 ,ID, title, S]) # 1 means label this sentence as 1(subjective)
+							S = sentences[i]
+					ID += 1
+
+
+				# sentences = re.split('，|。| ', content)
+				# # sentences = re.split('，|。', content)
+				# for i in range(len(sentences)):
+				# # for s in sentences:
+				# 	if len(sentences[i]) < 7 and i == len(sentences) - 1:
+				# 		continue
+				# 	elif len(sentences[i]) < 7:
+				# 		sentences[i + 1] = sentences[i] + sentences[i + 1]
+				# 	else:
+				# 		f.writerow([0, id1, title, sentences[i]])
+				# 		id1 += 1
 		print("===================================")
 		print("DONE!")
 		print("Filename: {} has store in current directory!".format(newfilename))

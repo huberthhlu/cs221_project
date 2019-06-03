@@ -141,7 +141,7 @@ class PttWebCrawler(object):
         # put which condition that you don't want the entire article
         # return None
         ####################
-        if u'公告' in title or u'新聞' in title: 
+        if u'公告' in title or u'新聞' in title or u'通報' in title: 
             return None
         ####################
         # remove and keep push nodes

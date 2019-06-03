@@ -14,6 +14,8 @@ from hanziconv import HanziConv
 import csv
 import argparse
 from filter_text import Filter_Text   # emoji filter
+from opencc import OpenCC
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -88,9 +90,12 @@ class wikiCrawler(object):
 					clean = re.compile('<.*?>') # to strip out <p> and </p> from a string 
 					main_content = re.sub(clean, ' ', main_content)
 					main_content = re.sub(r'(\s)+', ' ', main_content)
-					main_content = re.sub(r'http\S+', '', main_content) ###			
-					title = HanziConv.toTraditional(title)
-					main_content = HanziConv.toTraditional(main_content)
+					main_content = re.sub(r'http\S+', '', main_content) ###		
+					cc = OpenCC('s2t')
+					title = cc.convert(title)
+					main_content = cc.convert(main_content)
+					# title = HanziConv.toTraditional(title)
+					# main_content = HanziConv.toTraditional(main_content)
 					if self.mylist == []:
 						count = 0
 					else:

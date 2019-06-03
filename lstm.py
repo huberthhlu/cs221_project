@@ -56,14 +56,25 @@ import csv
 imp.reload(sys)
 
 
-obj_filename = './wiki_data/wiki_sentence_12381.csv' # 12381
-sub_filename = './ptt_data/ptt_data_18607.csv' #18607
-p = 0.66  # 20% of ptt_data lines
-obj = pd.read_csv(obj_filename,header = 0, skip_blank_lines=True)
-obj.dropna(how="all", inplace=True)
-sub = pd.read_csv(sub_filename, header = 0, skiprows = lambda i: i>0 and random.random() > p, index_col = None, error_bad_lines = False, skip_blank_lines=True)
-sub.dropna(how="all", inplace=True)
-cw = lambda x: list(jieba.cut(x))
+# obj_filename = './wiki_data/wiki_sentence_12381.csv' # 12381
+# sub_filename = './ptt_data/ptt_data_18607.csv' #18607
+# p = 0.66  # 20% of ptt_data lines
+# obj = pd.read_csv(obj_filename,header = 0, skip_blank_lines=True)
+# obj.dropna(how="all", inplace=True)
+# sub = pd.read_csv(sub_filename, header = 0, skiprows = lambda i: i>0 and random.random() > p, index_col = None, error_bad_lines = False, skip_blank_lines=True)
+# sub.dropna(how="all", inplace=True)
+# cw = lambda x: list(jieba.cut(x))
+
+obj_filename = './wiki_data/wiki_sentence_59239.csv' # 59239
+sub_filename = './ptt_data/ptt_data_45516.csv' #45516
+p = 0.768 
+obj = pd.read_csv(obj_filename,header = 0, skip_blank_lines=True, skiprows = lambda i: i>0 and random.random() > p)
+obj.dropna(inplace=True)
+sub = pd.read_csv(sub_filename, header = 0,  index_col = None, error_bad_lines = False, skip_blank_lines=True)
+sub.dropna(inplace=True)
+cw = lambda x: ' '.join(jieba.cut(x))
+
+
 obj['words'] = obj['sentences'].apply(cw)
 sub['words'] = sub['sentences'].apply(cw)
 

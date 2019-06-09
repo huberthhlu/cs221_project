@@ -1,0 +1,264 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import print_function
+
+import os
+import re
+import sys
+import codecs
+from bs4 import BeautifulSoup
+from six import u
+import logging
+import wikipediaapi
+# from hanziconv import HanziConv
+import csv
+import argparse
+from filter_text import Filter_Text   # emoji filter
+from opencc import OpenCC
+
+
+logging.basicConfig(level=logging.INFO)
+
+class wikiCrawler(object):
+	def __init__(self, cmdline=None, as_lib=False):
+		self.mylist = []
+		self.check = False
+		parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description='''
+			Wiki Crawler
+			Input: number of articles and category name
+			Output: wiki.csv 
+			''')
+		parser.add_argument('-l', metavar='ARTICLE_NUM', help='article num', required=True)
+		if not as_lib:
+			if cmdline:
+				args = parser.parse_args(cmdline)
+			else:
+				args = parser.parse_args()
+			limit = args.l
+
+			self.parse_wiki(limit)
+		
+
+	def parse_wiki(self, limit):
+		pageLimit = int(limit)
+		category = u'臺灣政治'
+		# category = u'中立的观点'
+		
+		# wiki_wiki = wikipediaapi.Wikipedia('en')
+		wiki_wiki = wikipediaapi.Wikipedia(
+		    language='zh-tw',
+		    extract_format=wikipediaapi.ExtractFormat.HTML
+		)
+
+		# c
+
+		def print_sections(sections, level=0):
+		        for s in sections:
+		                print("%s: %s - %s" % ("*" * (level + 1), s.title, s.text[0:40]))
+		                print_sections(s.sections, level + 1)
+
+		def print_links(page):
+		        links = page.links
+		        for title in sorted(links.keys()):
+		            print("%s: %s" % (title, links[title]))
+
+		def print_categories(page):
+		        categories = page.categories
+		        for title in sorted(categories.keys()):
+		            print("%s: %s" % (title, categories[title]))
+
+		def parseArticles(self, categorymembers, level=0, max_level=1):
+		# def parseArticles(self, categorymembers, level=0, max_level=1, mylist = []):
+			if self.check == True: 
+				return
+			idcount = id
+			for c in categorymembers.values():
+				if c.ns == 0:
+					print('==========', c.title, '\n' )
+					page_py = wiki_wiki.page(c.title)
+					print(c.summary, '\n' )
+
+					title = c.title
+					main_content = c.text
+					# 移除 '※ 發信站:' (starts with u'\u203b'), '◆ From:' (starts with u'\u25c6'), 空行及多餘空白
+					# 保留英數字, 中文及中文標點, 網址, 部分特殊符號
+					expr = re.compile(u(r'[^\u4e00-\u9fa5\u3002\uff1b\uff0c\uff1a\u201c\u201d\uff08\uff09\u3001\uff1f\u300a\u300b\s\w:/-_.?~%()]'))
+					main_content = re.sub(expr, '', main_content)
+					main_content = re.sub("[A-Za-z]", '', main_content)
+					main_content = re.sub('\[.+\]', '', main_content) # to strip out [???] from a string 
+					main_content = re.sub('\([^)]*\)', '', main_content) # to strip out <p> and </p> from a string 
+					clean = re.compile('<.*?>') # to strip out <p> and </p> from a string 
+					main_content = re.sub(clean, ' ', main_content)
+					main_content = re.sub(r'(\s)+', ' ', main_content)
+					main_content = re.sub(r'http\S+', '', main_content) ###	
+					cc = OpenCC('s2t')
+					title = cc.convert(title)
+					main_content = cc.convert(main_content)
+					# title = HanziConv.toTraditional(title)
+					# main_content = HanziConv.toTraditional(main_content)
+					if self.mylist == []:
+						count = 0
+					else:
+						count = len(self.mylist)
+					print (count)
+					if count > pageLimit:
+						self.check = True
+						# print('*'*10, len(mylist))
+						return
+					
+					self.mylist.append((count, title, main_content))					
+				if c.ns == wikipediaapi.Namespace.CATEGORY and level < max_level and self.check == False:
+					parseArticles(self, c.categorymembers, level=level + 1, max_level=max_level)
+					# parseArticles(self, c.categorymembers, level=level + 1, max_level=max_level, mylist = mylist)
+
+		cat = wiki_wiki.page('Category:'+ category)
+		filename = 'wiki_test'
+		f = csv.writer(open(filename+'.csv', "w"))
+		f.writerow(["id", "title", "content"])
+		idcount = 0
+		parseArticles(self, cat.categorymembers)
+		# mylist = parseArticles(self, cat.categorymembers)
+		# print('*'*10, len(mylist))
+		for a, b, c in self.mylist:
+			f.writerow([a, b,c])
+		########### Sentence-wise Data from Wiki
+		newfilename = "wiki_sentence.csv"
+		f = csv.writer(open(newfilename, "w"))
+		f.writerow(["label", "id", "title", "sentences"])
+		filename = 'wiki_test.csv'
+		path = './'
+		filename = os.path.join(path, filename)
+
+		def have_start_quote(s):
+			q = {u'「': u'」', 
+					u'（': u'）',
+					u'(':u')',
+					u'[':u']',
+					u'{':u'}',  
+					u'｢': u'｣', 
+					u'『': u'』',
+					u'【':u'】',
+					u'〔':u'〕',
+					u'〖':u'〗',
+					u'〘': u'〙',
+					u'〚':u'〛',
+					u'《':u'》'}
+			startlist = [u'（',u'(',u'[',u'{',u'【',u'〔',u'〖',u'〘',u'〚',u'《',u'｢',u'『',u'「']
+			# endlist =   [u'」',u'）'u')',u']',u'}',u'｣',u'』',u'】',u'〕',u'〗',u'〙',u'〛',u'》']
+			tmp = 'N'
+			for c in startlist:
+				if c in s:
+				# print(c)
+					tmp = q[c]
+					if tmp in s:
+						# print(tmp)
+						tmp = 'N'
+
+			if not tmp=='N':
+				return True, tmp
+
+			return False, None
+
+		def checkend(sentence, symbol):
+			if symbol in sentence:
+				return True
+
+		def cut_sent(para):
+			para = re.sub('([。！？\?])([^”’])', r"\1\n\2", para)  # 单字符断句符
+			para = re.sub('(\.{6})([^”’])', r"\1\n\2", para)  # 英文省略号
+			para = re.sub('(\…{2})([^”’])', r"\1\n\2", para)  # 中文省略号
+			para = re.sub('([。！？\?][”’])([^，。！？\?])', r'\1\n\2', para)
+			# 如果双引号前有终止符，那么双引号才是句子的终点，把分句符\n放到双引号后，注意前面的几句都小心保留了双引号
+			para = para.rstrip()  # 段尾如果有多余的\n就去掉它
+			# 很多规则中会考虑分号;，但是这里我把它忽略不计，破折号、英文双引号等同样忽略，需要的再做些简单调整即可。
+			return para.split("\n")
+
+		ID = 0
+		with open(filename, 'r') as csvfile: 
+			# creating a csv reader object 
+			csvreader = csv.reader(csvfile) 
+			# extracting field names through first row 
+			fields = next(csvreader) 
+			for row in csvreader:
+				# id1 = row[0]
+				title = row[1]
+				content = row[2]
+				# ADD delimiters after '，', e.g '，｜、'
+				# sentences = content.split('，')
+				############################################ Version 2 ############################################
+				# sentences = re.split(u'(，|。|,|:| )', content)
+				# quote = False
+				# S = sentences[0]
+				# for i in range(1,len(sentences)):
+				# 	sentences[i] = Filter_Text().filtet_text(sentences[i]) # emoji filter!!!!
+				# 	if quote:
+				# 		flag = checkend(sentences[i], symbol)
+				# 		if flag:
+				# 			quote = False
+
+				# 	if not quote:
+				# 		start, symbol = have_start_quote(sentences[i])
+				# 		if start:
+				# 			# print(sentences[i])
+				# 			# print(sentences[i+1])
+				# 			quote = True
+
+				# 	if len(re.sub("^[0-9]*$", '', sentences[i])) == 0 or len(re.sub(r"[a-zA-Z0-9./]",'',sentences[i])) == 0:
+				# 		if i == len(sentences): 
+				# 			if S == '':
+				# 				f.writerow([None ,ID, title, S])
+				# 			else:
+				# 				f.writerow([0 ,ID, title, S])
+				# 		continue
+				# 	if len(sentences[i]) < 7 or quote:
+				# 		if sentences[i] == ' ' or sentences[i] == ':':
+				# 			pass
+				# 		else:
+				# 			S += sentences[i]
+
+				# 		if i == len(sentences):
+				# 			if S == '':
+				# 				f.writerow([None ,ID, title, S])
+				# 			else:
+				# 				f.writerow([0 ,ID, title, S])
+				# 				S = ''
+				# 	else:
+				# 		if S == '':
+				# 			f.writerow([None ,ID, title, S])
+				# 		else:
+				# 			f.writerow([0 ,ID, title, S]) # 1 means label this sentence as 1(subjective)
+				# 			S = sentences[i]
+				# 	ID += 1
+
+				############################################ Version 1 ############################################
+				# sentences = re.split('，|。| ', content)
+				# # sentences = re.split('，|。', content)
+				# for i in range(len(sentences)):
+				# # for s in sentences:
+				# 	if len(sentences[i]) < 7 and i == len(sentences) - 1:
+				# 		continue
+				# 	elif len(sentences[i]) < 7:
+				# 		sentences[i + 1] = sentences[i] + sentences[i + 1]
+				# 	else:
+				# 		f.writerow([0, id1, title, sentences[i]])
+				# 		id1 += 1
+
+				############################################ Version 3 ############################################
+				sentences = cut_sent(content)
+				# print('**'*10,len(sentences))
+				for i in range(len(sentences)):
+					sentences[i] = Filter_Text().filtet_text(sentences[i]) # emoji filter!!!!
+					if len(re.sub("^[0-9]*$", '', sentences[i])) <= 1: continue  # exclud the string only contains numbers
+					f.writerow([1 ,ID, title, sentences[i]]) # 1 means label this sentence as 1(subjective)
+					ID += 1
+		print("===================================")
+		print("DONE!")
+		print("Filename: {} has store in current directory!".format(newfilename))
+
+if __name__ == '__main__':
+    c = wikiCrawler()
+"""
+ref:
+1. https://pypi.org/project/Wikipedia-API/
+2. https://github.com/martin-majlis/Wikipedia-API
+"""
